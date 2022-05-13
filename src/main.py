@@ -1,6 +1,7 @@
 import sys
 import os
 import argparse
+import cmd
 
 
 def posint(n):
@@ -8,61 +9,85 @@ def posint(n):
         n = int(n)
         assert n > 0
     except ValueError:
-        raise argparse.ArgumentTypeError('Please enter a valid integer.')
+        print('Please enter a valid integer.')
     except AssertionError:
-        raise argparse.ArgumentTypeError('Please enter a positive integer.')
+        print('Please enter a positive integer.')
     return int(n)
 
 
-# StackOverflow: https://stackoverflow.com/questions/5943249/python-argparse-and-controlling-overriding-the-exit-status-code
-class ArgumentParser(argparse.ArgumentParser):
-    def _get_action_from_name(self, name):
-        '''Given a name, get the Action instance registered with this parser.
-        If only it were made available in the ArgumentError object. It is 
-        passed as it's first arg...
-        '''
-        container = self._actions
-        if name is None:
-            return None
-        for action in container:
-            if '/'.join(action.option_strings) == name:
-                return action
-            elif action.metavar == name:
-                return action
-            elif action.dest == name:
-                return action
+class DeathNote(cmd.Cmd):
+    '''Interprets user input as commands.'''
 
-    def error(self, message):
-        exc = sys.exc_info()[1]
-        if exc:
-            exc.argument = self._get_action_from_name(exc.argument_name)
-            raise exc
-        super(ArgumentParser, self).error(message)
+    def __init__(self):
+        cmd.Cmd.__init__(self)
+        self.prompt = 'Kira> '
+        self.intro = '''
+DEATH NOTE
+
+Type \'help\' to see a list of commands.
+'''
+
+    def emptyline(self):
+        pass
+
+    def do_EOF(self, line):
+        return True
+
+    def do_help(self, line):
+        '''Show the help message.'''
+        print('''
+Commands:
+
+> help: displays this message
+> exit: exits the program
+> pid: writes the PID of the process to the Death Note
+> time: specify the time of death
+> signal: specify the signal to be sent
+> status: displays the status of Death Note jobs
+''')
+
+    def do_exit(self, line):
+        '''Exit the program.'''
+        sys.exit(0)
+
+    def do_pid(self, pids):
+        '''Write the PID of the process(es) to the Death Note.'''
+        print(pids)
+        if pids == '':
+            print(
+                'Please enter the PID of the process(es) to be killed (space-delimited).')
+            return
+        pids = pids.split()
+        for pid in pids:
+            try:
+                pid = posint(pid)
+            except Exception as e:
+                print('Please enter a valid positive integer.')
+                return
+
+            try:
+                os.kill(pid, 9)
+                print(f'The process with PID {pid} shall die.')
+            except ProcessLookupError:
+                print(f'The process with PID {pid} does not exist.')
+            except PermissionError:
+                print(f'The process with PID {pid} is under the protection of a \'Lack of permission\', and cannot be killed.')
+            except OSError:
+                print(f'PID {pid} - unknown error.')
+            except Exception as e:
+                print(f'PID {pid} - unknown error: {e}')
+
+    def help_pid(self):
+        print('''
+pid <PID> (<PID> <PID> ...)
+
+Writes the PID of the process(es) specified to the Death Note.
+''')
 
 
 def main():
-    parser = argparse.ArgumentParser(add_help=False)
-    parser.add_argument('-h', '--help', dest='h', action='help',
-                        default=argparse.SUPPRESS, help='Show this help message and exit')
-    parser.add_argument('-p', '--pid', dest='p', type=posint,
-                        required=True, help='Kill the process with the given PID')
-    try:
-        args = parser.parse_args(args=(None if sys.argv[1:] else ['-h']))
-    except argparse.ArgumentError as exc:
-        print(exc.message, '\n', exc.argument)
-        sys.exit(1)
+    DeathNote().cmdloop()
 
-    print(f'Killing process with PID {args.p}')
-    try:
-        os.kill(args.p, 9)
-    except ProcessLookupError:
-        print('Process not found.')
-    except PermissionError:
-        print('Permission denied.')
-    except OSError:
-        print('Unknown error.')
-    except Exception as e:
-        print(f'Unknown error: {e}')
 
 if __name__ == '__main__':
     main()
