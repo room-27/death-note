@@ -5,16 +5,17 @@
 
 The process whose PID is written with this notebook shall die.
 
-This note will not take effect unless the writer has the process firmly in their mind when writing its PID. Processes cannot have the same PID and so multiple processes will not be affected.
+This note will not take effect unless the writer has the process firmly in their mind when writing its PID. Processes cannot have the same PID and so multiple processes will not be directly affected.
 
 If the cause of death is written within the next 40 seconds of writing the process's PID, it will happen.
 If the cause of death is not specified, the process will simply die of a SIGTERM.
-After writing the cause of death, details of the death should be written in the next 6 minutes and 40 seconds.
+After writing the cause of death, details of the death should be written in the next 6 minutes and 40 seconds (or until the specified time).
 
 This note shall become the property of the human world, once it touches the ground of (arrives in) the human world.
 The owner of the note can recognize the image and voice of the original owner, i.e. a Superuser of Death.
 The human who uses this note can neither go to Heaven nor Hell.
 
+If the time of death is not specified, the process will die in the 40 human seconds.
 If the time of death is written within 40 seconds after writing the cause of death as a SIGTERM, the time of death can be manipulated, and the time can go into effect within 40 seconds after writing the PID.
 The human who touches the Death Note can recognize the image and voice of its original owner, a Superuser of Death, even if the human is not the owner of the note.
 
