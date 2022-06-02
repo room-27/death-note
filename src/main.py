@@ -176,9 +176,20 @@ Exits the Death Note interpreter.''')
                 print(f'\nThe process with PID {pid} does not exist.')
                 return
 
+            self.flags['written_at'] = datetime.datetime.now()
+
+            # Set default time to 40s
+            if not self.flags['time_set']:
+                self.details['time'] = self.flags['written_at'] + \
+                    datetime.timedelta(seconds=40)
+            
+            # Check if time is before the current time
+            if self.details['time'] < self.flags['written_at']:
+                print(f'\nThe time you specified is before the current time.')
+                return
+
             self.details['pid'] = pid
             self.flags['pid_set'] = True
-            self.flags['written_at'] = datetime.datetime.now()
 
             if psutil.Process(pid).username() == 'root':
                 print(
@@ -186,13 +197,6 @@ Exits the Death Note interpreter.''')
 
             # Now finalise everything, since the PID has been written.
             # Set timers before locking time, signal.
-
-            # Set default time to 40s
-            if not self.flags['time_set']:
-                self.details['time'] = self.flags['written_at'] + \
-                    datetime.timedelta(seconds=40)
-
-            print(self.details, self.flags)
 
             threading.Timer(
                 (self.details['time'] -
@@ -367,6 +371,15 @@ Without an argument, prints the status of current message being written.
 With an ID, prints the status of the message with the given ID.
 With \'all\', prints the status of all running jobs.
 Printed output for a running job includes Job ID, PID, date, time and signal.''')
+
+    def do_last(self, line):
+        '''Re-use the last time of death and signal'''
+        if not self.last == {}:        
+            self.details = self.last
+            self.flags['time_set'] = True
+            self.flags['signal_set'] = True
+        else:
+            print('\nNo previous details found.')
 
 
 def main():
