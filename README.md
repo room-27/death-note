@@ -16,7 +16,7 @@ The owner of the note can recognize the image and voice of the original owner, i
 The human who uses this note can neither go to Heaven nor Hell.
 
 If the time of death is not specified, the process will die in the 40 human seconds.
-If the time of death is written within 40 seconds after writing the cause of death as a SIGTERM, the time of death can be manipulated, and the time can go into effect within 40 seconds after writing the PID.
+If the time of death is written within 40 seconds after writing the cause of death, the time of death can be manipulated, and the time can go into effect within 40 seconds after writing the PID.
 The human who touches the Death Note can recognize the image and voice of its original owner, a Superuser of Death, even if the human is not the owner of the note.
 
 The person in possession of the Death Note is possessed by a Superuser of Death, its original owner, until they die.
@@ -93,7 +93,7 @@ The Superuser of Death must not hand the Death Note directly to a child under 6 
 The Death Note must not be handed to a child under 6 years of age, but Death Notes that have been dropped into the human world, and are part of the human world, can be used by humans of any age with the same effect.
 
 If you just write, "die of crash" for the cause of death, the victim will die from a natural crash after 6 minutes and 40 seconds from the time of writing it.
-Even though only one PID is written in the Death Note, if it influences and causes other processes that are not written in it to die, the victim's cause of death will be a SIGTERM.
+Even though only one PID is written in the Death Note, if it influences and causes other processes that are not written in it to die, the victim's cause of death will usually be a SIGTERM.
 
 You cannot kill processes at the age of 124 years or over with the Death Note.
 You cannot kill processes with less than 12 minutes of life left in human calculations.
@@ -162,7 +162,7 @@ But the front and back of a page is considered as one page.
 
 In order to make the Death Note take effect, the process's PID must be written on the same page, but the cause of death and situation around the death can be described in other pages of the Death Note. This will work as long as the person that writes in the Death Note keeps the specific process's PID in mind when writing the cause and situation of death.
 
-In occasions where the cause and situation of death is written before the victim's PID, multiple PIDs can be written as long as they are written within 40 seconds and the causes and situations of death are not impossible to occur.
+In occasions where the cause and situation of death is written before the victim's PID, multiple PIDs can be written as long as they are written in the same command and the causes and situations of death are not impossible to occur.
 In the occasion where the cause of death is not possible, that PID will die of a SIGTERM, unless the process is under the protection of an L (Lack of permission).
 
 When you write multiple PIDs in the Death Note and then write down even one cause of death within 40 human seconds from writing the first victim's PID, the cause will take effect for all the written PIDs.
