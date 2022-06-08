@@ -160,7 +160,7 @@ The seventh Death Note will be able to become active when one of the other 6 Dea
 The Death Note will not take effect if you write a specific victims PID using several different pages.
 But the front and back of a page is considered as one page.
 
-In order to make the Death Note take effect, the process's PID must be written on the same page, but the cause of death and situation around the death can be described in other pages of the Death Note. This will work as long as the person that writes in the Death Note keeps the specific process's PID in mind when writing the cause and situation of death.
+In order to make the Death Note take effect, the process's PID must be written on the same page as the cause of death and situation around the death. This will work as long as the person that writes in the Death Note keeps the specific process's PID in mind when writing the cause and situation of death.
 
 In occasions where the cause and situation of death is written before the victim's PID, multiple PIDs can be written as long as they are written in the same command and the causes and situations of death are not impossible to occur.
 In the occasion where the cause of death is not possible, that PID will die of a SIGTERM, unless the process is under the protection of an L (Lack of permission).

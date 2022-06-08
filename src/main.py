@@ -24,7 +24,7 @@ class DeathNote(cmd.Cmd):
     '''Interprets user input as commands.'''
 
     details = {
-        'pid': 0,
+        'pid': [0],
         'time': None,
         'signal': 15
     }
@@ -74,23 +74,25 @@ class DeathNote(cmd.Cmd):
     }
 
     def kill(self, details):
-        pid = details['pid']
+        pids = details['pid']
         signal = details['signal']
-        try:
-            os.kill(pid, signal)
-            print(f'The process with PID {pid} has been terminated.')
-            return
-        except ProcessLookupError:
-            print(f'The process with PID {pid} has already been killed.')
-            return
-        except PermissionError:
-            print(
-                f'The process with PID {pid} is under the protection of a Lack of permission.')
-            return
-        except Exception as e:
-            print(
-                f'An unknown error occurred while terminating the process with PID {pid}: {e}')
-            return
+        for pid in pids:
+            try:
+                os.kill(int(pid), signal)
+                print(
+                    f'The process with PID {pid} has been sent a {self.signal_map[signal]}.')
+                continue
+            except ProcessLookupError:
+                print(f'The process with PID {pid} has already been killed.')
+                continue
+            except PermissionError:
+                print(
+                    f'The process with PID {pid} is under the protection of a Lack of permission.')
+                continue
+            except Exception as e:
+                print(
+                    f'An unknown error occurred while terminating the process with PID {pid}: {e}')
+                continue
 
     def reset_details(self):
         # Copy details to a restorable dict
@@ -101,7 +103,7 @@ class DeathNote(cmd.Cmd):
         }
         # Reset details and flags
         self.details = {
-            'pid': 0,
+            'pid': [0],
             'time': None,
             'signal': 15
         }
@@ -164,47 +166,58 @@ Exits the Death Note interpreter.''')
                 'Please enter the PID of the process(es) to be killed (space-delimited).')
             return
         pids = pids.split()
-        for pid in pids:
 
+        errors = False
+        for pid in pids:
             try:
                 pid = posint(pid)
             except Exception as e:
-                return
+                errors = True
+                continue
 
             # Check if the given process exists with psutil:
             if not psutil.pid_exists(pid):
                 print(f'\nThe process with PID {pid} does not exist.')
-                return
-
-            self.flags['written_at'] = datetime.datetime.now()
-
-            # Set default time to 40s
-            if not self.flags['time_set']:
-                self.details['time'] = self.flags['written_at'] + \
-                    datetime.timedelta(seconds=40)
-            
-            # Check if time is before the current time
-            if self.details['time'] < self.flags['written_at']:
-                print(f'\nThe time you specified is before the current time.')
-                return
-
-            self.details['pid'] = pid
-            self.flags['pid_set'] = True
+                errors = True
+                continue
 
             if psutil.Process(pid).username() == 'root':
                 print(
-                    f'\nWarning: the process with PID {pid} is possessed by a Superuser of Death.')
+                    f'\nWarning: the process with PID {pid} is currently possessed by a Superuser of Death.')
+        if errors:
+            return
 
-            # Now finalise everything, since the PID has been written.
-            # Set timers before locking time, signal.
+        self.flags['written_at'] = datetime.datetime.now()
 
-            threading.Timer(
-                (self.details['time'] -
-                 datetime.datetime.now()).total_seconds(),
-                self.kill,
-                args=[self.details]).start()
+        # Set default time to 40s
+        if not self.flags['time_set']:
+            self.details['time'] = self.flags['written_at'] + \
+                datetime.timedelta(seconds=40)
 
-            self.reset_details()
+        # Check if time is before the current time
+        if self.details['time'] < self.flags['written_at']:
+            print(f'\nThe time you specified is before the current time.')
+            return
+
+        self.details['pid'] = pids
+        self.flags['pid_set'] = True
+
+        # Create a Timer thread
+
+        threading.Timer(
+            (self.details['time'] -
+                datetime.datetime.now()).total_seconds(),
+            self.kill,
+            args=[self.details]).start()
+
+        # Set timers before locking time, signal for this job
+
+        ### TODO
+
+        self.reset_details() # For now, reset details after thread creation
+
+        plural = len(pids) > 1
+        print('\nThe process' + 'es'*plural + ' with PID' + 's'*plural + f' {", ".join(pids)} will die.')
 
     def help_pid(self):
         print('''
@@ -217,6 +230,7 @@ Writes the PID of the process(es) specified to the Death Note.''')
         if when == '':
             print('Please enter the time of death in MM/DD/YYYY HH/MM/SS format.')
             return
+
         # Parse input as best as possible
         try:
             when = dateutil.parser.parse(
@@ -321,11 +335,13 @@ The signal can be specified by its number, or by its name with or without the SI
             if not self.flags['time_set']:
                 print('No time of death has been specified yet.')
             else:
-                print(f'Time of death: {self.details["time"].strftime("%A, %B %d, %Y at %H:%M:%S")}')
+                print(
+                    f'Time of death: {self.details["time"].strftime("%A, %B %d, %Y at %H:%M:%S")}')
             if not self.flags['signal_set']:
                 print('No signal has been specified yet.')
             else:
-                print(f'Signal: {self.details["signal"]} ({self.signal_map[self.details["signal"]]})')
+                print(
+                    f'Signal: {self.details["signal"]} ({self.signal_map[self.details["signal"]]})')
         elif arg == 'all':
             # List details of all running threads
             if len(threading.enumerate()) == 1:
@@ -335,10 +351,12 @@ The signal can be specified by its number, or by its name with or without the SI
                     if thread is threading.main_thread():
                         continue
                     job_details = thread.args[0]
+                    pids = job_details["pid"]
                     jid = thread.native_id
 
-                    print(f'({jid}) {thread.name}: PID {job_details["pid"]} \
-is scheduled to die at {job_details["time"].strftime("%A, %B %d, %Y at %H:%M:%S")} \
+                    plural = len(pids) > 1
+                    print(f'({jid}) {thread.name}: PID{"s" * plural} {", ".join(pids)} \
+{"are" if plural else "is"} scheduled to die on {job_details["time"].strftime("%A, %B %d, %Y at %H:%M:%S")} \
 by signal {job_details["signal"]} ({self.signal_map[job_details["signal"]]}).')
                 return
         else:
@@ -353,16 +371,18 @@ by signal {job_details["signal"]} ({self.signal_map[job_details["signal"]]}).')
                     thread.native_id == jid) and thread is not threading.current_thread()][0]
                 # Print the thread's details
                 job_details = thread.args[0]
-                
-                print(f'({jid}) {thread.name}: PID {job_details["pid"]} \
-is scheduled to die at {job_details["time"].strftime("%A, %B %d, %Y at %H:%M:%S")} \
+                pids = job_details["pid"]
+
+                plural = len(pids) > 1
+                print(f'({jid}) {thread.name}: PID{"s" * plural} {", ".join(pids)} \
+{"are" if plural else "is"} scheduled to die on {job_details["time"].strftime("%A, %B %d, %Y at %H:%M:%S")} \
 by signal {job_details["signal"]} ({self.signal_map[job_details["signal"]]}).')
                 return
             except ValueError:
                 print('Please enter a valid thread ID.')
                 return
 
-    def help_status(self):
+    def help_status(self): # TODO: move current details to page system
         print('''
 status (<id>|all)
 
@@ -374,7 +394,7 @@ Printed output for a running job includes Job ID, PID, date, time and signal.'''
 
     def do_last(self, line):
         '''Re-use the last time of death and signal'''
-        if not self.last == {}:        
+        if not self.last == {}:
             self.details = self.last
             self.flags['time_set'] = True
             self.flags['signal_set'] = True

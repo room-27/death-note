@@ -2,7 +2,7 @@
 
 ## Soon
 
-[ ] Details properly apply to multiple PIDs - group into one thread?
+[X] Details properly apply to multiple PIDs - group into one thread?
 
 ## New
 
