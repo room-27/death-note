@@ -5,6 +5,7 @@ import datetime
 import dateutil.parser
 import cmd
 import threading
+import itertools
 
 
 def posint(n):
@@ -20,21 +21,50 @@ def posint(n):
     return int(n)
 
 
+class Page():
+    id_counter = itertools.count(1)
+
+    def __init__(self):
+        self.id = next(self.id_counter)
+        self.modified = False
+        self.details = {
+            'pid': [0],
+            'time': None,
+            'signal': 15
+        }
+        self.flags = {
+            'time_set': False,
+            'pid_set': False,
+            'signal_set': False,
+            'written_at': None
+        }
+
+    # Setters for details as input is time-sensitive
+    def set_time(self, time):
+        self.modified = True
+        dn.update_prompt()
+        self.details['time'] = time
+        self.flags['time_set'] = True
+
+    def set_signal(self, signal):
+        self.modified = True
+        dn.update_prompt()
+        self.details['signal'] = signal
+        self.flags['signal_set'] = True
+
+    def set_pid(self, pid):
+        self.modified = True
+        dn.update_prompt()
+        self.details['pid'] = pid
+
+    def set_written_at(self, time):
+        self.flags['written_at'] = time
+
+
 class DeathNote(cmd.Cmd):
     '''Interprets user input as commands.'''
 
-    details = {
-        'pid': [0],
-        'time': None,
-        'signal': 15
-    }
-
-    flags = {
-        'time_set': False,
-        'pid_set': False,
-        'signal_set': False,
-        'written_at': None
-    }
+    pages = []
 
     last = {}
 
@@ -73,6 +103,13 @@ class DeathNote(cmd.Cmd):
         31: 'SIGSYS',
     }
 
+    # Create the first page:
+    page = Page()
+    pages.append(page)
+    # pages.append(Page())
+    # pages.append(Page())
+    # pages.append(Page())
+
     def kill(self, details):
         pids = details['pid']
         signal = details['signal']
@@ -96,31 +133,34 @@ class DeathNote(cmd.Cmd):
 
     def reset_details(self):
         # Copy details to a restorable dict
-        self.last = {
-            'pid': self.details['pid'],
-            'time': self.details['time'],
-            'signal': self.details['signal'],
-        }
-        # Reset details and flags
-        self.details = {
+        self.last = self.page.details
+        self.page.details = {
             'pid': [0],
             'time': None,
             'signal': 15
         }
-        self.flags = {
+        self.page.flags = {
             'time_set': False,
             'pid_set': False,
             'signal_set': False,
             'written_at': None
         }
+        self.page.modified = False
+        self.update_prompt()
 
     def __init__(self):
         cmd.Cmd.__init__(self)
-        self.prompt = '\nKira> '
+        current_page = self.page.id
+        self.prompt = f'\n[🗋 {current_page}] Kira> '
         self.intro = '''
 DEATH NOTE
 
 Type \'help\' to see a list of commands.'''
+
+    def update_prompt(self):
+        current_page = self.page.id
+        modified = "🗎" if self.page.modified else "🗋"
+        self.prompt = f'\n[{modified} {current_page}] Kira> '
 
     def emptyline(self):
         pass
@@ -159,6 +199,30 @@ Exits the Death Note interpreter.''')
     do_EOF = do_exit
     help_EOF = help_exit
 
+    def do_page(self, page):
+        # switch to the specified page id:
+        if page == '':
+            print('\nPlease specify a page number to switch to.')
+            return
+        try:
+            page = posint(page)
+        except Exception as e:
+            return
+        if page > len(self.pages):
+            print('\nThe specified page does not exist.')
+            return
+        page_found = False
+        for i, p in enumerate(self.pages):
+            if p.id == page:
+                page_found = True
+                self.page = p
+                break
+        if not page_found:
+            print('\nThe specified page does not exist.')
+            return
+        self.update_prompt()
+        print(f'\nSwitched to page {page}.')
+
     def do_pid(self, pids):
         '''Write the PID of the process(es) to the Death Note.'''
         if pids == '':
@@ -187,37 +251,33 @@ Exits the Death Note interpreter.''')
         if errors:
             return
 
-        self.flags['written_at'] = datetime.datetime.now()
+        if self.page.flags['time_set']:
+            # Check if time was set to before the current time
+            if self.page.details['time'] < datetime.datetime.now():
+                print(f'\nThe time you specified is before the current time.')
+                return
+        else:
+            # Set default time to 40s
+            self.page.set_time(datetime.datetime.now() +
+                               datetime.timedelta(seconds=40))
 
-        # Set default time to 40s
-        if not self.flags['time_set']:
-            self.details['time'] = self.flags['written_at'] + \
-                datetime.timedelta(seconds=40)
+        self.page.set_written_at(datetime.datetime.now())
 
-        # Check if time is before the current time
-        if self.details['time'] < self.flags['written_at']:
-            print(f'\nThe time you specified is before the current time.')
-            return
-
-        self.details['pid'] = pids
-        self.flags['pid_set'] = True
+        self.page.set_pid(pids)
 
         # Create a Timer thread
 
         threading.Timer(
-            (self.details['time'] -
+            (self.page.details['time'] -
                 datetime.datetime.now()).total_seconds(),
             self.kill,
-            args=[self.details]).start()
+            args=[self.page.details]).start()  # PAGE - link page number
 
-        # Set timers before locking time, signal for this job
-
-        ### TODO
-
-        self.reset_details() # For now, reset details after thread creation
+        self.reset_details()  # For now, reset details after thread creation
 
         plural = len(pids) > 1
-        print('\nThe process' + 'es'*plural + ' with PID' + 's'*plural + f' {", ".join(pids)} will die.')
+        print('\nThe process' + 'es'*plural + ' with PID' +
+              's'*plural + f' {", ".join(pids)} will die.')
 
     def help_pid(self):
         print('''
@@ -250,8 +310,8 @@ Writes the PID of the process(es) specified to the Death Note.''')
             print('\nPlease enter a date and time in the future.')
             return
 
-        self.details['time'] = when
-        self.flags['time_set'] = True
+        # Write to page
+        self.page.set_time(when)
 
         pretty_when = when.strftime('%A, %B %d, %Y at %H:%M:%S')
         print(f'\nSelected time of death: {pretty_when}.')
@@ -281,7 +341,7 @@ If time is not specified at all, the resulting time will be 40 seconds from  of 
                     '\nPlease enter a valid signal number between 0 and 31, or its corresponding signal code.')
                 return
 
-            self.details['signal'] = signal
+            self.page.set_signal(signal)
             signal_num = signal
             signal_code = self.signal_map.get(signal, 'None')
 
@@ -309,14 +369,13 @@ If time is not specified at all, the resulting time will be 40 seconds from  of 
                     '\nPlease enter a valid signal code, or its corresponding number between 0 and 31.')
                 return
 
-            self.details['signal'] = signal_num
+            self.page.set_signal(signal_num)
             signal_code = (not signal_prefix) * 'SIG' + signal
 
         except Exception as e:
             print(f'\nAn error occured while processing the given signal: {e}')
             return
 
-        self.flags['signal_set'] = True
         print(f'\nSelected cause of death: {signal_code} ({signal_num}).')
 
     def help_signal(self):
@@ -332,18 +391,18 @@ The signal can be specified by its number, or by its name with or without the SI
         # check if no arguments were given:
         print('')
         if arg == '':
-            if not self.flags['time_set']:
+            if not self.page.flags['time_set']:
                 print('No time of death has been specified yet.')
             else:
                 print(
-                    f'Time of death: {self.details["time"].strftime("%A, %B %d, %Y at %H:%M:%S")}')
-            if not self.flags['signal_set']:
+                    f'Time of death: {self.page.details["time"].strftime("%A, %B %d, %Y at %H:%M:%S")}')
+            if not self.page.flags['signal_set']:
                 print('No signal has been specified yet.')
             else:
                 print(
-                    f'Signal: {self.details["signal"]} ({self.signal_map[self.details["signal"]]})')
+                    f'Signal: {self.page.details["signal"]} ({self.signal_map[self.page.details["signal"]]})')
         elif arg == 'all':
-            # List details of all running threads
+            # List details of all running threads, with job and page IDs
             if len(threading.enumerate()) == 1:
                 print('No jobs are running.')
             else:
@@ -354,6 +413,8 @@ The signal can be specified by its number, or by its name with or without the SI
                     pids = job_details["pid"]
                     jid = thread.native_id
 
+                    # TODO: get page number instead of JID
+
                     plural = len(pids) > 1
                     print(f'({jid}) {thread.name}: PID{"s" * plural} {", ".join(pids)} \
 {"are" if plural else "is"} scheduled to die on {job_details["time"].strftime("%A, %B %d, %Y at %H:%M:%S")} \
@@ -361,6 +422,7 @@ by signal {job_details["signal"]} ({self.signal_map[job_details["signal"]]}).')
                 return
         else:
             try:
+                # TODO: get BY page number instead of JID
                 jid = int(arg)
                 # Check if the thread with the given ID exists
                 if not any(thread.native_id == jid for thread in threading.enumerate()):
@@ -382,7 +444,7 @@ by signal {job_details["signal"]} ({self.signal_map[job_details["signal"]]}).')
                 print('Please enter a valid thread ID.')
                 return
 
-    def help_status(self): # TODO: move current details to page system
+    def help_status(self):
         print('''
 status (<id>|all)
 
@@ -395,15 +457,15 @@ Printed output for a running job includes Job ID, PID, date, time and signal.'''
     def do_last(self, line):
         '''Re-use the last time of death and signal'''
         if not self.last == {}:
-            self.details = self.last
-            self.flags['time_set'] = True
-            self.flags['signal_set'] = True
+            self.page.set_time(self.last['time'])
+            self.page.set_signal(self.last['signal'])
         else:
             print('\nNo previous details found.')
 
 
+dn = DeathNote()
 def main():
-    DeathNote().cmdloop()
+    dn.cmdloop()
 
 
 if __name__ == '__main__':

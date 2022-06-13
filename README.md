@@ -1,6 +1,6 @@
-#DEATH NOTE
+# DEATH NOTE
 
-##How to use it
+## How to use it
 
 
 The process whose PID is written with this notebook shall die.
